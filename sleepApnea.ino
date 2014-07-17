@@ -1,9 +1,6 @@
 /*
-  SD card datalogger
- 
- This example shows how to log data from three analog sensors 
- to an SD card using the SD library.
-    
+  MODIFIED FROM SD card datalogger
+     
  The circuit:
  * analog sensors on analog ins 0, 1, and 2
  * SD card attached to SPI bus as follows:
@@ -12,8 +9,7 @@
  ** CLK - pin 13
  ** CS - pin 4
  
- created  24 Nov 2010
- modified 9 Apr 2012
+ originally created  24 Nov 2010
  by Tom Igoe
  
  This example code is in the public domain.
@@ -23,17 +19,13 @@
 #include <SD.h>
 
 String dataString = "";    // this is going to contain each line that shall be written to the SD card
-File dataFile;
-
-// On the Ethernet Shield, CS is pin 4. Note that even if it's not
-// used as the CS pin, the hardware CS pin (10 on most Arduino boards,
-// 53 on the Mega) must be left as an output or the SD library
-// functions will not work.
+File dataFile;             // the file shall be made a global variable
 const int chipSelect = 4;
 
 void setup()
 {
  // Open serial communications and wait for port to open:
+ // this shall be removed later yo
   Serial.begin(9600);
   
   // Serial.println("Initializing SD card...");
@@ -48,7 +40,7 @@ void setup()
     return;
   }
   // Serial.println("card initialized.");
-  delay(500);
+  delay(500);    // giving some delay because without that it behaves weirdly
   
   // next, we go about initializing a timer interrupt for 100Hz...
   cli();//stop interrupts
@@ -68,7 +60,7 @@ void setup()
 
   sei();//allow interrupts
   
-  delay(500);
+  delay(500);    // more delays = delayed climax, oh yes
 }
 
 void loop()
