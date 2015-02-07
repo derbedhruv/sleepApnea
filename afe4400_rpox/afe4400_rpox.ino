@@ -1,6 +1,11 @@
 /****************************************
   This has been taken from http://www.protocentral.com/downloads/examples/protoc_afe4400_spo2.ino
-  and used as-is
+  and has been modified.
+  
+  Author: Dhruv Joshi
+  
+  The AFE4400 development board is being used with an arduino UNO to be able to 
+  develop a reflective pulse oximeter using the NJL5501 sensor.
 ****************************************/
 
 #include <string.h>
@@ -72,16 +77,6 @@ double difIRheartsig_dc;
 double difREDheartsig_dc;
 
 FIR fir;
-
-//unsigned int Redac_sq ;
-
-/*
-double powdifIR;
-double powdifRed;
-
-double SpOpercentage;
-double Ratio;
-*/
 
 const int SOMI = 12; 
 const int SIMO = 11; 
