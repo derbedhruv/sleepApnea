@@ -10,17 +10,18 @@
   The following has been taken from the datasheet of this shield:
   * - (via logic level shift) 
   
-  Arduino pins  Shield nomenclature  Usage (AFE4400)
-  ------------  -------------------  ----- 
-  D2            *ARD_DRDY            ADC_RDY 
-  D4            *ARD_PWDN            AFE_PDN
-  D7            *ARD_CS0             SPI_CS0
-  D8            *ARD_PD_ALM          PD_ALM
-  D9            *ARD_LED_ALM         LED_ALM
-  D10           *ARD_DIAG_END        DIAG_END
-  D11           *ARD_MOSI            SPI_MOSI
-  D12           *ARD_MISO            SPI_MISO
-  D13           *ARD_SCK             SPI_SCK
+  Arduino pins  Shield nomenclature  Name (AFE4400)  Usage
+  ------------  -------------------  -------------   ------
+  D2            *ARD_DRDY            ADC_RDY         ADC conversion completion
+  D4            *ARD_PWDN            AFE_PDN         AFE-onle power down
+  D7            *ARD_CS0             SPISTE          SPI serial interface enable
+  D8            *ARD_PD_ALM          PD_ALM          PD sensor fault indicator
+  D9            *ARD_LED_ALM         LED_ALM         LED cable fault indicator
+  D10           *ARD_DIAG_END        DIAG_END        completion of diagnostics
+  
+  D11           *ARD_MOSI            SPI_MOSI        
+  D12           *ARD_MISO            SPI_MISO        
+  D13           *ARD_SCK             SPI_SCK         
   
   GND           GND
   5V            Vcc (+5V)
@@ -32,6 +33,9 @@
   The system makes extensive use of the BSS138 NFET to convert logic levels
   No analog pins are used, everything is digital using SPI comm between the AFE4400 and the arduino
   
+  The flowchart/algo for the system is the following:
+  1. setup SPI comm and settings
+  2. 
   
   ****************************************/
 
@@ -112,19 +116,21 @@ const int SCLK  = 13;
 const int SPISTE = 7; 
 const int SPIDRDY = 6;
 
+// 
 int pin = 3;
 int pin2 = 4;
 volatile int state = LOW;
 
-
+// function declarations
 void AFE4490Init (void);
 void AFE4490Write (uint8_t address, uint32_t data);
 uint32_t AFE4490Read (uint8_t address);
 
 void setup()
 {
-   Serial.begin(9600);
+   Serial.begin(9600);    // nice and slow 9600 baud
     
+   // all the SPI-related declarations
    SPI.begin(); 
    pinMode (SOMI,INPUT);
    pinMode (SPISTE,OUTPUT);
@@ -133,11 +139,12 @@ void setup()
    pinMode (SPIDRDY,INPUT);
    
    pinMode(2, INPUT);
- pinMode(3, OUTPUT);
-
-  //pinMode(pin, OUTPUT);
-  attachInterrupt(0, blink, RISING );
+   pinMode(3, OUTPUT);              // ******THIS PIN ISN'T BEING USED!
    
+   // an interrupt
+   attachInterrupt(0, blink, RISING );
+   
+   // some simple SPI-related changes
    SPI.setClockDivider (SPI_CLOCK_DIV8);
    SPI.setDataMode (SPI_MODE0);
    SPI.setBitOrder (MSBFIRST);
@@ -145,294 +152,205 @@ void setup()
     
   
 float coef[FILTERTAPS] = { 0.021, 0.096, 0.146, 0.096, 0.021};
-    fir.setCoefficients(coef);
+   fir.setCoefficients(coef);
 
-    //declare gain coefficient to scale the output back to normal
-    float gain = 1; // set to 1 and input unity to see what this needs to be
-    fir.setGain(gain);
-    
-    
- 
+   //declare gain coefficient to scale the output back to normal
+   float gain = 1; // set to 1 and input unity to see what this needs to be
+   fir.setGain(gain);
+
    AFE4490Init (); 
-   }
+ }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void loop()
-{
-    float data = sp02();
-                       if(data)
-                       {
-                        Serial.print("sp02:--> ");
-                       Serial.println(data);
-                       }
-
+void loop() {
+  float data = sp02();
+  if(data) {
+    Serial.print("sp02:--> ");
+    Serial.println(data);
+  }
 }
 
-
-void blink()
-{
+void blink() {
   state = HIGH;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void AFE4490Init (void)
 { 
-    Serial.println("AFE4490 Initialization Starts"); 
-     AFE4490Write(CONTROL0,0x000000);
-     
-                  AFE4490Write(TIAGAIN,0x000000);	// CF = 5pF, RF = 500kR
-                   AFE4490Write(TIA_AMB_GAIN,0x000005);	// Timers ON, average 3 samples 
-                   AFE4490Write(LEDCNTRL,0x0011414);	  
-                   AFE4490Write(CONTROL2,0x000000);	// LED_RANGE=100mA, LED=50mA 
-                   AFE4490Write(CONTROL1,0x010707);	// Timers ON, average 3 samples  
-    
-     AFE4490Write(PRPCOUNT, 0X001F3F);
-    /*AFE4490Write(CONTROL1, 0x000101);
-    AFE4490Write(CONTROL2, 0x000000);  
-    AFE4490Write(PRPCOUNT, 0X001F3F);*/
-
-    AFE4490Write(LED2STC, 0X001770); //timer control
-    AFE4490Write(LED2ENDC,0X001F3E); //timer control
-    AFE4490Write(LED2LEDSTC,0X001770); //timer control
-    AFE4490Write(LED2LEDENDC,0X001F3F); //timer control
-    AFE4490Write(ALED2STC, 0X000000); //timer control
-    AFE4490Write(ALED2ENDC, 0X0007CE); //timer control
-    AFE4490Write(LED2CONVST,0X000002); //timer control
-    AFE4490Write(LED2CONVEND, 0X0007CF); //timer control
-    AFE4490Write(ALED2CONVST, 0X0007D2); //timer control
-    AFE4490Write(ALED2CONVEND,0X000F9F); //timer control
-
-    AFE4490Write(LED1STC, 0X0007D0); //timer control
-    AFE4490Write(LED1ENDC, 0X000F9E); //timer control
-    AFE4490Write(LED1LEDSTC, 0X0007D0); //timer control
-    AFE4490Write(LED1LEDENDC, 0X000F9F); //timer control
-    AFE4490Write(ALED1STC, 0X000FA0); //timer control
-    AFE4490Write(ALED1ENDC, 0X00176E); //timer control
-    AFE4490Write(LED1CONVST, 0X000FA2); //timer control
-    AFE4490Write(LED1CONVEND, 0X00176F); //timer control
-    AFE4490Write(ALED1CONVST, 0X001772); //timer control
-    AFE4490Write(ALED1CONVEND, 0X001F3F); //timer control
-
-    AFE4490Write(ADCRSTCNT0, 0X000000); //timer control
-    AFE4490Write(ADCRSTENDCT0,0X000000); //timer control
-    AFE4490Write(ADCRSTCNT1, 0X0007D0); //timer control
-    AFE4490Write(ADCRSTENDCT1, 0X0007D0); //timer control
-    AFE4490Write(ADCRSTCNT2, 0X000FA0); //timer control
-    AFE4490Write(ADCRSTENDCT2, 0X000FA0); //timer control
-    AFE4490Write(ADCRSTCNT3, 0X001770); //timer control
-    AFE4490Write(ADCRSTENDCT3, 0X001770);
+  Serial.println("AFE4490 Initialization Starts"); 
+  AFE4490Write(CONTROL0,0x000000);
+  AFE4490Write(TIAGAIN,0x000000);	// CF = 5pF, RF = 500kR
+  AFE4490Write(TIA_AMB_GAIN,0x000005);	// Timers ON, average 3 samples 
+  AFE4490Write(LEDCNTRL,0x0011414);	  
+  AFE4490Write(CONTROL2,0x000000);	// LED_RANGE=100mA, LED=50mA 
+  AFE4490Write(CONTROL1,0x010707);	// Timers ON, average 3 samples  
   
-    delay(1000);
-    Serial.println("AFE4490 Initialization Done"); 
+  AFE4490Write(PRPCOUNT, 0X001F3F);
+
+  AFE4490Write(LED2STC, 0X001770); //timer control
+  AFE4490Write(LED2ENDC,0X001F3E); //timer control
+  AFE4490Write(LED2LEDSTC,0X001770); //timer control
+  AFE4490Write(LED2LEDENDC,0X001F3F); //timer control
+  AFE4490Write(ALED2STC, 0X000000); //timer control
+  AFE4490Write(ALED2ENDC, 0X0007CE); //timer control
+  AFE4490Write(LED2CONVST,0X000002); //timer control
+  AFE4490Write(LED2CONVEND, 0X0007CF); //timer control
+  AFE4490Write(ALED2CONVST, 0X0007D2); //timer control
+  AFE4490Write(ALED2CONVEND,0X000F9F); //timer control
+
+  AFE4490Write(LED1STC, 0X0007D0); //timer control
+  AFE4490Write(LED1ENDC, 0X000F9E); //timer control
+  AFE4490Write(LED1LEDSTC, 0X0007D0); //timer control
+  AFE4490Write(LED1LEDENDC, 0X000F9F); //timer control
+  AFE4490Write(ALED1STC, 0X000FA0); //timer control
+  AFE4490Write(ALED1ENDC, 0X00176E); //timer control
+  AFE4490Write(LED1CONVST, 0X000FA2); //timer control
+  AFE4490Write(LED1CONVEND, 0X00176F); //timer control
+  AFE4490Write(ALED1CONVST, 0X001772); //timer control
+  AFE4490Write(ALED1CONVEND, 0X001F3F); //timer control
+
+  AFE4490Write(ADCRSTCNT0, 0X000000); //timer control
+  AFE4490Write(ADCRSTENDCT0,0X000000); //timer control
+  AFE4490Write(ADCRSTCNT1, 0X0007D0); //timer control
+  AFE4490Write(ADCRSTENDCT1, 0X0007D0); //timer control
+  AFE4490Write(ADCRSTCNT2, 0X000FA0); //timer control
+  AFE4490Write(ADCRSTENDCT2, 0X000FA0); //timer control
+  AFE4490Write(ADCRSTCNT3, 0X001770); //timer control
+  AFE4490Write(ADCRSTENDCT3, 0X001770);
+
+  delay(1000);
+  Serial.println("AFE4490 Initialization Done"); 
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void AFE4490Write (uint8_t address, uint32_t data)
-{
-    digitalWrite (SPISTE, LOW); // enable device
-    SPI.transfer (address); // send address to device
-    SPI.transfer ((data >> 16) & 0xFF); // write top 8 bits
-    SPI.transfer ((data >> 8) & 0xFF); // write middle 8 bits
-    SPI.transfer (data & 0xFF); // write bottom 8 bits    
-    digitalWrite (SPISTE, HIGH); // disable device
+void AFE4490Write (uint8_t address, uint32_t data) {
+  digitalWrite (SPISTE, LOW); // enable device
+  SPI.transfer (address); // send address to device
+  SPI.transfer ((data >> 16) & 0xFF); // write top 8 bits
+  SPI.transfer ((data >> 8) & 0xFF); // write middle 8 bits
+  SPI.transfer (data & 0xFF); // write bottom 8 bits    
+  digitalWrite (SPISTE, HIGH); // disable device
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-uint32_t AFE4490Read (uint8_t address)
-{       
-    uint32_t data=0;
-    digitalWrite (SPISTE, LOW); // enable device
-    SPI.transfer (address); // send address to device
-    //SPI.transfer (data);
-    data |= (SPI.transfer (0)<<16); // read top 8 bits data
-    data |= (SPI.transfer (0)<<8); // read middle 8 bits  data
-    data |= SPI.transfer (0); // read bottom 8 bits data
-    digitalWrite (SPISTE, HIGH); // disable device
-    
-   /* pinMode (SOMI,OUTPUT);
-    digitalWrite (SOMI, HIGH); 
-     delay(1);
-    pinMode (SOMI,INPUT);    
-    */
-	
-    return data; // return with 24 bits of read data
+uint32_t AFE4490Read (uint8_t address) {       
+  uint32_t data=0;
+  digitalWrite (SPISTE, LOW); // enable device
+  SPI.transfer (address); // send address to device
+  //SPI.transfer (data);
+  data |= (SPI.transfer (0)<<16); // read top 8 bits data
+  data |= (SPI.transfer (0)<<8); // read middle 8 bits  data
+  data |= SPI.transfer (0); // read bottom 8 bits data
+  digitalWrite (SPISTE, HIGH); // disable device
+  	
+  return data; // return with 24 bits of read data
 }
 
 
 void enableDRDY()
 {
-      state = LOW;
-      attachInterrupt(0, blink, RISING );  
+  state = LOW;
+  attachInterrupt(0, blink, RISING );  
 }
 
 void disableDRDY()
 {
-       detachInterrupt(0);  
+  detachInterrupt(0);  
 }
 
-signed long AFERead (uint8_t address)
-{       
-
-  	uint32_t data = AFE4490Read (address);
-
-/*        Serial.print(data,HEX); 
-        Serial.print("\t"); 
-*/	
-	unsigned long utemp = (unsigned long) (data<<10);
-	signed long stemp = (signed long) (utemp);
-	stemp = (signed long) (stemp>>10);	
-	
-
-    return stemp; // return with 22 bits of read data
+signed long AFERead (uint8_t address) {       
+  uint32_t data = AFE4490Read (address);
+  unsigned long utemp = (unsigned long) (data<<10);
+  signed long stemp = (signed long) (utemp);
+  stemp = (signed long) (stemp>>10);
+  return stemp; // return with 22 bits of read data
 }
 
 
-float sp02(void)
-{
-	//unsigned int 
-long Redvalue, IRvalue, Redhigh, Redlow, IRhigh, IRlow;
-long Redsum = 0, IRsum = 0;
-        unsigned long Redac_sq = 0;
-         unsigned long IRac_sq = 0;
-         static int flag1 = 1;
- long Reddc, IRdc,Reddc_prev,IRdc_prev;
-        int samples = 2000;
- long IRac; 
-long  Redac;
+float sp02(void) {
+  long Redvalue, IRvalue, Redhigh, Redlow, IRhigh, IRlow;
+  long Redsum = 0, IRsum = 0;
+  unsigned long Redac_sq = 0;
+  unsigned long IRac_sq = 0;
+  static int flag1 = 1;
+  long Reddc, IRdc,Reddc_prev,IRdc_prev;
+  int samples = 2000;
+  long IRac; 
+  long  Redac;
 
         
-                        AFE4490Write(CONTROL0,0x000001);  	
-	Redhigh = Redlow = AFERead(LED2VAL);
-	IRhigh = IRlow = AFERead(LED1VAL);
-	
-
-        
-	for(int i=1;i<(samples+1);i++)
-	{
-                enableDRDY();
-                while (state == LOW);
-       
-		Redvalue = AFERead(LED2VAL);
-		IRvalue = AFERead(LED1VAL);
-                 disableDRDY();
-                //Serial.print(Redvalue); 
-                //Serial.print("\t");                 
-                Redvalue = fir.process(Redvalue);  
-                IRvalue = fir.process(IRvalue);  
-                //Serial.println(Redvalue); 
-                 
-             /*               Serial.print(i); 
-                Serial.print("\t");   
-               Serial.print(Redvalue); 
-                Serial.print("\t"); 
-                Serial.print(IRvalue); 
-                Serial.print("\t"); 
-             	*/	
-		Redsum += Redvalue;
-		IRsum += IRvalue;
+  AFE4490Write(CONTROL0,0x000001);  	
+  Redhigh = Redlow = AFERead(LED2VAL);
+  IRhigh = IRlow = AFERead(LED1VAL);
+	   
+  for(int i=1;i<(samples+1);i++) {
+    enableDRDY();
+    while (state == LOW);
+ 
+    Redvalue = AFERead(LED2VAL);
+    IRvalue = AFERead(LED1VAL);
+    disableDRDY();                
+    Redvalue = fir.process(Redvalue);  
+    IRvalue = fir.process(IRvalue);  
+    Redsum += Redvalue;
+    IRsum += IRvalue;
 		
-		if(Redvalue > Redhigh)
-			Redhigh = Redvalue;	
-		if(Redvalue < Redlow)
-			Redlow = Redvalue;	
-			
-		if(IRvalue > IRhigh)
-			IRhigh = IRvalue;	
-		if(IRvalue < IRlow)
-			IRlow = IRvalue;	
+    if(Redvalue > Redhigh)
+      Redhigh = Redvalue;	
+    if(Redvalue < Redlow)
+      Redlow = Redvalue;	
+    if(IRvalue > IRhigh)
+      IRhigh = IRvalue;	
+    if(IRvalue < IRlow)
+      IRlow = IRvalue;	
 
-               /*  Reddc = average_BPM(Redvalue);
-                  IRdc = average_BPM2(IRvalue);
-*/
-                if (i<501)
-                {
-                  continue;
-                }
-                    Reddc = Redsum/i;
-                  IRdc = IRsum/i;
+    if (i<501) {
+      continue;
+    }
+    Reddc = Redsum/i;
+    IRdc = IRsum/i;
 
-                //Redac_sq = Redhigh - Reddc;
-	        //IRac_sq = IRhigh - IRdc;
-                 /* Serial.print(Reddc);
-                                   Serial.print("\t");
-                                                     Serial.print(IRdc);
-                                   Serial.print("\t");\
-                   */                
-                /* Redac_sq += pow (((long)(Redvalue - Reddc_prev)), 2.0);
-                 IRac_sq += pow (((long)(IRvalue - IRdc_prev)), 2.0);
-                 
-                 */
-                 Redac_sq += pow (((long)(Redvalue - Reddc)), 2.0);
-                 IRac_sq += pow (((long)(IRvalue - IRdc)), 2.0);
-              /*   
-                 Serial.print((Redvalue - Reddc));
-                 Serial.print("\t");
-                 Serial.print(Redac_sq);
-                 Serial.print("\t");
-                                  Serial.print((IRvalue - IRdc));
-                 Serial.print("\t");
-                 Serial.println(IRac_sq);
-                */ 
-                 
-	}		
+    Redac_sq += pow (((long)(Redvalue - Reddc)), 2.0);
+    IRac_sq += pow (((long)(IRvalue - IRdc)), 2.0);
+  }		
 	
-      if((Reddc < 0 && IRdc < 0) ||( Reddc>4000 && IRdc>4000))
-      {
-         Serial.println("Finger not detected.");
-         return 0;
-      }   
-//Serial.println("hai");
-	/*Reddc_prev = Reddc = Redsum/500;
-	IRdc_prev = IRdc = IRsum/500;
-	
-        if(flag1 ==1)
-        {
-          flag1 = 0;
-          return 0;
-        }
-          
-          */
-	/*Redac = Redhigh - Redlow;
-	IRac = IRhigh - IRlow;
-*/
-	Redac = sqrt(Redac_sq/(samples-500));
-	IRac = sqrt(IRac_sq/(samples-500));
+  if((Reddc < 0 && IRdc < 0) ||( Reddc>4000 && IRdc>4000)) {
+     Serial.println("Finger not detected.");
+     return 0;
+  }   
 
-        Serial.print("Reddc: "); 
-        Serial.print(Reddc); 
-        Serial.print("\t"); 
-                Serial.print("Redhigh: ");                 
-                Serial.print(Redhigh); 
-                Serial.print("\t");
-                Serial.print("Redlow: ");                 
-                Serial.print(Redlow); 
-                Serial.print("\t");
-                Serial.print("Redac_sq: ");                 
-                Serial.print(Redac_sq); 
-                Serial.print("\t");
-                Serial.print("Redac :"); 
-                Serial.print(Redac); 
-                Serial.print("\t");         
-        
-        
-                Serial.print("IRdc: "); 
-                Serial.print(IRdc); 
-                Serial.print("\t");          
-                Serial.print("IRhigh: ");                 
-                Serial.print(IRhigh); 
-                Serial.print("\t");
-                Serial.print("IRlow: ");                 
-                Serial.print(IRlow); 
-                Serial.print("\t");     
-                Serial.print("IRac_sq :")  ;
-                Serial.print(IRac_sq); 
-                Serial.print("\t");            
-                Serial.print("IRac :"); 
-                Serial.print(IRac); 
-                Serial.print("\t"); 
-               
-	
-	float spo2 = (float)((float)Redac/Reddc)/(float)((float)IRac/IRdc);
-	
-	return spo2;
-}	
+  Redac = sqrt(Redac_sq/(samples-500));
+  IRac = sqrt(IRac_sq/(samples-500));
 
-
+  Serial.print("Reddc: "); 
+  Serial.print(Reddc); 
+  Serial.print("\t"); 
+  Serial.print("Redhigh: ");                 
+  Serial.print(Redhigh); 
+  Serial.print("\t");
+  Serial.print("Redlow: ");                 
+  Serial.print(Redlow); 
+  Serial.print("\t");
+  Serial.print("Redac_sq: ");                 
+  Serial.print(Redac_sq); 
+  Serial.print("\t");
+  Serial.print("Redac :"); 
+  Serial.print(Redac); 
+  Serial.print("\t");         
+  Serial.print("IRdc: "); 
+  Serial.print(IRdc); 
+  Serial.print("\t");          
+  Serial.print("IRhigh: ");                 
+  Serial.print(IRhigh); 
+  Serial.print("\t");
+  Serial.print("IRlow: ");                 
+  Serial.print(IRlow); 
+  Serial.print("\t");     
+  Serial.print("IRac_sq :")  ;
+  Serial.print(IRac_sq); 
+  Serial.print("\t");            
+  Serial.print("IRac :"); 
+  Serial.print(IRac); 
+  Serial.print("\t"); 
+  
+  float spo2 = (float)((float)Redac/Reddc)/(float)((float)IRac/IRdc);
+  return spo2;
+}
