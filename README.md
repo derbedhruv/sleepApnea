@@ -1,4 +1,6 @@
 sleepApnea
 ==========
+Author: Dhruv Joshi
 
-taking data from a series of sensors at predefined intervals using an arduino UNO and saving it to SD card. name irrelevant.
+Sleep apnea detection hardware project "aram" being done with the camera culture group, MIT Media Lab
+This repo currently tracks my development of a reflective forehead pulse oximeter - a very crucial component of this entire setup
