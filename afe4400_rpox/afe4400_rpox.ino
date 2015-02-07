@@ -6,7 +6,24 @@
   
   The AFE4400 development board is being used with an arduino UNO to be able to 
   develop a reflective pulse oximeter using the NJL5501 sensor.
-****************************************/
+  
+  The following has been taken from the datasheet of this shield:
+  Arduino pins  Shield nomenclature  Usage
+  ------------  -------------------  ----- 
+  D2            ARD_DRDY
+  D4            ARD_PWDN
+  D7            ARD_CS0
+  D8            ARD_PD_ALM
+  D9            ARD_LED_ALM
+  D10           ARD_DIAG_END
+  D11           ARD_MOSI
+  D12           ARD_MISO
+  D13           ARD_SCK
+  
+  GND           GND
+  5V            Vcc (+5V)
+  
+  ****************************************/
 
 #include <string.h>
 #include <SPI.h>
@@ -78,6 +95,7 @@ double difREDheartsig_dc;
 
 FIR fir;
 
+// defining the pins which will be used in the arduino
 const int SOMI = 12; 
 const int SIMO = 11; 
 const int SCLK  = 13;
