@@ -8,20 +8,30 @@
   develop a reflective pulse oximeter using the NJL5501 sensor.
   
   The following has been taken from the datasheet of this shield:
-  Arduino pins  Shield nomenclature  Usage
+  * - (via logic level shift) 
+  
+  Arduino pins  Shield nomenclature  Usage (AFE4400)
   ------------  -------------------  ----- 
-  D2            ARD_DRDY
-  D4            ARD_PWDN
-  D7            ARD_CS0
-  D8            ARD_PD_ALM
-  D9            ARD_LED_ALM
-  D10           ARD_DIAG_END
-  D11           ARD_MOSI
-  D12           ARD_MISO
-  D13           ARD_SCK
+  D2            *ARD_DRDY            ADC_RDY 
+  D4            *ARD_PWDN            AFE_PDN
+  D7            *ARD_CS0             SPI_CS0
+  D8            *ARD_PD_ALM          PD_ALM
+  D9            *ARD_LED_ALM         LED_ALM
+  D10           *ARD_DIAG_END        DIAG_END
+  D11           *ARD_MOSI            SPI_MOSI
+  D12           *ARD_MISO            SPI_MISO
+  D13           *ARD_SCK             SPI_SCK
   
   GND           GND
   5V            Vcc (+5V)
+  -----------------------------------------
+  
+  The system uses the LP3878 as a voltage regulator
+  The system uses a TPS7A4901 as a voltage regulator
+  The system uses a TPS717xx to generate a +3.3V regulated from the +5V input
+  The system makes extensive use of the BSS138 NFET to convert logic levels
+  No analog pins are used, everything is digital using SPI comm between the AFE4400 and the arduino
+  
   
   ****************************************/
 
