@@ -244,7 +244,6 @@ uint32_t AFE4490Read (uint8_t address) {
   return data; // return with 24 bits of read data
 }
 
-
 void enableDRDY()
 {
   state = LOW;
@@ -266,6 +265,7 @@ signed long AFERead (uint8_t address) {
 
 
 float sp02(void) {
+  // this function finds the actual spo2 and returns it (float)
   long Redvalue, IRvalue, Redhigh, Redlow, IRhigh, IRlow;
   long Redsum = 0, IRsum = 0;
   unsigned long Redac_sq = 0;
