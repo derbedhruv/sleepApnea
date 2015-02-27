@@ -190,6 +190,8 @@ void AFE4490Init (void)
   // bit 1 - Timer counter reset. 0 after reset.
   // bit 0 - SPI read. 0 for disable (after reset).
   AFE4490Write(CONTROL0,0x000000);
+  
+  
   AFE4490Write(TIAGAIN,0x000000);	// CF = 5pF, RF = 500kR
   AFE4490Write(TIA_AMB_GAIN,0x000005);	// Timers ON, average 3 samples 
 
