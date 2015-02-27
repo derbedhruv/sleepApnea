@@ -79,7 +79,7 @@
 #define ADCRSTENDCT3    	0x1c
 #define PRPCOUNT		0x1d
 
-
+// the rest are defined in detail in Figure 89 onwards (p62), in order.
 #define CONTROL1		0x1e
 #define SPARE1			0x1f
 #define TIAGAIN			0x20
@@ -112,7 +112,7 @@ double difREDheartsig_dc;
 
 FIR fir;
 
-// defining the pins which will be used in the arduino
+// defining the SPI pins which will be used in the arduino
 const int SOMI = 12; 
 const int SIMO = 11; 
 const int SCLK  = 13;
@@ -152,16 +152,15 @@ void setup()
    SPI.setDataMode (SPI_MODE0);
    SPI.setBitOrder (MSBFIRST);
    
-    
-  
-float coef[FILTERTAPS] = { 0.021, 0.096, 0.146, 0.096, 0.021};
+   // FIR filter  
+   float coef[FILTERTAPS] = { 0.021, 0.096, 0.146, 0.096, 0.021};
    fir.setCoefficients(coef);
 
    //declare gain coefficient to scale the output back to normal
    float gain = 1; // set to 1 and input unity to see what this needs to be
    fir.setGain(gain);
 
-   AFE4490Init (); 
+   AFE4490Init ();       // initialize the AFE44x0 after reset.
  }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -191,10 +190,18 @@ void AFE4490Init (void)
   // bit 0 - SPI read. 0 for disable (after reset).
   AFE4490Write(CONTROL0,0x000000);
   
+  // TIAGAIN is the transimpedence amplifier (TIA) gain setting register. It is mentioned to be "reserved for factory use".
+  // reset value 0x000000
+  AFE4490Write(TIAGAIN,0x000000);	
   
-  AFE4490Write(TIAGAIN,0x000000);	// CF = 5pF, RF = 500kR
-  AFE4490Write(TIA_AMB_GAIN,0x000005);	// Timers ON, average 3 samples 
-
+  // Transimpedance Amplifier and Ambient Cancellation Stage Gain Register
+  // This register configures the ambient light cancellation amplifier gain, cancellation current, and filter corner frequency
+  // 0x000005 = B0000 0000 0000 0000 0000 0101
+  // That means, piecewise,
+  // 0000         0000                             0            0                        000          000                        00000                                   101
+  // ^must be 0   ^ambient DAC value. 0 on reset.  ^must be 0   ^0 default after reset.  ^must be 0   ^stage 2 gain, 0 on reset. ^program CF, here 5 pF (reset default)  ^10 kOhm RF for LEDs
+  AFE4490Write(TIA_AMB_GAIN,0x000005);
+  
 
   // the following register is for LED intensity. "LEDCNTRL"
   // 0x0011414 = B0000 0001 0001 0100 0001 0100
@@ -205,8 +212,17 @@ void AFE4490Init (void)
   //  must be 0    LED current source ON    must be 1      LED1 signal - here 20 (so current is (20/256)*50 mA = 3.9 mA        LED2 signal - same value, same current.
   AFE4490Write(LEDCNTRL,0x0011414);	        
   
-  
+  // CONTROL2 controls the LED transmitter, crystal, and the AFE, transmitter, and receiver power modes
+  // 
   AFE4490Write(CONTROL2,0x000000);	// LED_RANGE=100mA, LED=50mA 
+  
+  // CONTROL1 configures the clock alarm pin and timer
+  // 0x000702 = B0000 0000 0000 0111 0000 0010
+  // explanation is
+  // 0000 0000 0000          011                                                                                            1              0000 0010
+  // --------------          ---                                                                                            -              ---------
+  // bit 23:12 - must be 0   11:9 - clock on alarm pins. In this case, PD_ALM is LED2 convert and LED_ALM is LED1 convert.  timer enabled. ^Must be like this.
+  // **************NOTE: THIS IS PROBABLY WRONG, WOULD HAVE TO BE 0X000702 AND NOT 0X010707
   AFE4490Write(CONTROL1,0x010707);	// Timers ON, average 3 samples  
   
   AFE4490Write(PRPCOUNT, 0X001F3F);
@@ -297,13 +313,12 @@ float sp02(void) {
   static int flag1 = 1;
   long Reddc, IRdc,Reddc_prev,IRdc_prev;
   int samples = 2000;
-  long IRac; 
-  long  Redac;
+  long IRac, Redac;
 
-        
-  AFE4490Write(CONTROL0,0x000001);  	
-  Redhigh = Redlow = AFERead(LED2VAL);
-  IRhigh = IRlow = AFERead(LED1VAL);
+  AFE4490Write(CONTROL0,0x000001);  	  // enable SPI read.
+  
+  Redhigh = Redlow = AFERead(LED2VAL);    // 24-bit LED2 value from ADC
+  IRhigh = IRlow = AFERead(LED1VAL);      // 24-bit LED2 value from ADC
 	   
   for(int i=1;i<(samples+1);i++) {
     enableDRDY();
