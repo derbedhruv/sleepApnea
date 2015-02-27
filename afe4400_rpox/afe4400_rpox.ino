@@ -351,10 +351,12 @@ float sp02(void) {
     IRac_sq += pow (((long)(IRvalue - IRdc)), 2.0);
   }		
 	
+  /*
   if((Reddc < 0 && IRdc < 0) ||( Reddc>4000 && IRdc>4000)) {
      Serial.println("Finger not detected.");
      return 0;
   }   
+  */
 
   Redac = sqrt(Redac_sq/(samples-500));
   IRac = sqrt(IRac_sq/(samples-500));
