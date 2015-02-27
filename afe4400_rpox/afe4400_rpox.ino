@@ -46,7 +46,8 @@
 //#include "Average.h"
 #define BPM_WINDOW 300
 
-
+// The following are register bits defined as in Table 6 in the AFE4400 datasheet and Section 8.6.2
+// This first block are described in Table 2
 #define CONTROL0		0x00
 #define LED2STC			0x01
 #define LED2ENDC		0x02
@@ -63,24 +64,26 @@
 #define LED2CONVST		0x0d
 #define LED2CONVEND		0x0e
 #define ALED2CONVST		0x0f
-#define ALED2CONVEND	0x10
+#define ALED2CONVEND	        0x10
 #define LED1CONVST		0x11
 #define LED1CONVEND		0x12
 #define ALED1CONVST		0x13
-#define ALED1CONVEND	0x14
+#define ALED1CONVEND      	0x14
 #define ADCRSTCNT0		0x15
-#define ADCRSTENDCT0	0x16
+#define ADCRSTENDCT0    	0x16
 #define ADCRSTCNT1		0x17
-#define ADCRSTENDCT1	0x18
+#define ADCRSTENDCT1    	0x18
 #define ADCRSTCNT2		0x19
-#define ADCRSTENDCT2	0x1a
+#define ADCRSTENDCT2    	0x1a
 #define ADCRSTCNT3		0x1b
-#define ADCRSTENDCT3	0x1c
+#define ADCRSTENDCT3    	0x1c
 #define PRPCOUNT		0x1d
+
+
 #define CONTROL1		0x1e
 #define SPARE1			0x1f
 #define TIAGAIN			0x20
-#define TIA_AMB_GAIN	0x21
+#define TIA_AMB_GAIN    	0x21
 #define LEDCNTRL		0x22
 #define CONTROL2		0x23
 #define SPARE2			0x24
@@ -116,7 +119,7 @@ const int SCLK  = 13;
 const int SPISTE = 7; 
 const int SPIDRDY = 6;
 
-// 
+// general declarations
 int pin = 3;
 int pin2 = 4;
 volatile int state = LOW;
@@ -178,10 +181,29 @@ void blink() {
 void AFE4490Init (void)
 { 
   Serial.println("AFE4490 Initialization Starts"); 
+  
+  // CONTROL0 is used for AFE software and count timer reset, diagnostics enable, and SPI read functions.
+  // The bits are given as follows
+  // bits 23:4 - must be 0
+  // bit 3 - software reset. on reset, needs to be 0.
+  // bit 2 - diagnostic enable. 0 after reset.
+  // bit 1 - Timer counter reset. 0 after reset.
+  // bit 0 - SPI read. 0 for disable (after reset).
   AFE4490Write(CONTROL0,0x000000);
   AFE4490Write(TIAGAIN,0x000000);	// CF = 5pF, RF = 500kR
   AFE4490Write(TIA_AMB_GAIN,0x000005);	// Timers ON, average 3 samples 
-  AFE4490Write(LEDCNTRL,0x0011414);	  
+
+
+  // the following register is for LED intensity. "LEDCNTRL"
+  // 0x0011414 = B0000 0001 0001 0100 0001 0100
+  // seeing these bits as packets,
+  // B0 0 0 0 0 0            0                 1                                    0001 0100                                            0001 0100
+  //  -----------           ---               ---                                   ---------                                            ---------
+  //  bits 23:18             17                16                                      15:8                                                  7:0
+  //  must be 0    LED current source ON    must be 1      LED1 signal - here 20 (so current is (20/256)*50 mA = 3.9 mA        LED2 signal - same value, same current.
+  AFE4490Write(LEDCNTRL,0x0011414);	        
+  
+  
   AFE4490Write(CONTROL2,0x000000);	// LED_RANGE=100mA, LED=50mA 
   AFE4490Write(CONTROL1,0x010707);	// Timers ON, average 3 samples  
   
