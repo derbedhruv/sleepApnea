@@ -167,7 +167,7 @@ void setup()
 void loop() {
   float data = sp02();
   if(data) {
-    Serial.print("sp02:--> ");
+    // Serial.print("sp02:--> ");
     Serial.println(data);
   }
 }
@@ -179,7 +179,7 @@ void blink() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void AFE4490Init (void)
 { 
-  Serial.println("AFE4490 Initialization Starts"); 
+  // Serial.println("AFE4490 Initialization Starts"); 
   
   // CONTROL0 is used for AFE software and count timer reset, diagnostics enable, and SPI read functions.
   // The bits are given as follows
@@ -258,8 +258,8 @@ void AFE4490Init (void)
   AFE4490Write(ADCRSTCNT3, 0X001770); //timer control
   AFE4490Write(ADCRSTENDCT3, 0X001770);
 
-  delay(1000);
-  Serial.println("AFE4490 Initialization Done"); 
+  delay(1);
+  // Serial.println("AFE4490 Initialization Done"); 
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void AFE4490Write (uint8_t address, uint32_t data) {
@@ -321,6 +321,9 @@ float sp02(void) {
   Redhigh = Redlow = AFERead(LED2VAL);    // 24-bit LED2 value from ADC
   IRhigh = IRlow = AFERead(LED1VAL);      // 24-bit LED2 value from ADC
 	   
+  return int(Redhigh);
+  
+/*
   for(int i=1; i<(samples+1); i++) {
     enableDRDY();
     while (state == LOW);
@@ -372,6 +375,7 @@ float sp02(void) {
   Redac = sqrt(Redac_sq/(samples-500));
   IRac = sqrt(IRac_sq/(samples-500));
 
+/*
   Serial.print("Reddc: "); 
   Serial.print(Reddc); 
   Serial.print("\t"); 
@@ -406,4 +410,5 @@ float sp02(void) {
   // take the ratio of ratios to find the spo2 value finally..
   float spo2 = (float)((float)Redac/Reddc)/(float)((float)IRac/IRdc);
   return spo2;
+  */
 }
