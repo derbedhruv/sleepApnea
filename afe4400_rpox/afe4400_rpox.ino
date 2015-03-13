@@ -35,7 +35,8 @@
   
   The flowchart/algo for the system is the following:
   1. setup SPI comm and settings
-  2. 
+  2. initialize the afe4400 and set all parameters for the control registers (such as TIA gain and LED driving current etc)
+  3. (LOOP) keep reading one of the "LED" values and printing it out to Serial
   
   ****************************************/
 
@@ -318,7 +319,7 @@ float sp02(void) {
   AFE4490Write(CONTROL0,0x000001);  	  // enable SPI read.
   
   // initialize the max and min values before a loop..
-  Redhigh = Redlow = AFERead(LED2VAL);    // 24-bit LED2 value from ADC
+  Redhigh = Redlow = AFERead(LED2ABSVAL);    // 24-bit LED2 value from ADC
   IRhigh = IRlow = AFERead(LED1VAL);      // 24-bit LED2 value from ADC
 	   
   return int(Redhigh);
