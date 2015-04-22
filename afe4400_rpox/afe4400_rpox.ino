@@ -2,6 +2,8 @@
   This has been taken from http://www.protocentral.com/downloads/examples/protoc_afe4400_spo2.ino
   and has been modified.
   
+  In its present form, this code outputs two PPG signals (comma seperated) to the serial monitor OR to an SD card.
+  
   Author: Dhruv Joshi
   
   The AFE4400 development board is being used with an arduino UNO to be able to 
@@ -166,7 +168,7 @@ void setup()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void loop() {
-  float data = sp02();
+  String data = ppg();
   if(data) {
     // Serial.print("sp02:--> ");
     Serial.println(data);
@@ -305,7 +307,7 @@ signed long AFERead (uint8_t address) {
 }
 
 
-float sp02(void) {
+String ppg(void) {
   // this function finds the actual spo2 and returns it (float)
   long Redvalue, IRvalue, Redhigh, Redlow, IRhigh, IRlow;
   long Redsum = 0, IRsum = 0;
@@ -319,97 +321,8 @@ float sp02(void) {
   AFE4490Write(CONTROL0,0x000001);  	  // enable SPI read.
   
   // initialize the max and min values before a loop..
-  Redhigh = Redlow = AFERead(LED2ABSVAL);    // 24-bit LED2 value from ADC
-  IRhigh = IRlow = AFERead(LED1VAL);      // 24-bit LED2 value from ADC
+  Redhigh = Redlow = AFERead(LED2ABSVAL);    // 24-bit LED2 value from ADC, baseline corrected
+  IRhigh = IRlow = AFERead(LED1ABSVAL);      // 24-bit LED1 value from ADC, baseline corrected
 	   
-  return int(Redhigh);
-  
-/*
-  for(int i=1; i<(samples+1); i++) {
-    enableDRDY();
-    while (state == LOW);
- 
-    Redvalue = AFERead(LED2VAL);    // this reads in the latest LED2 value
-    IRvalue = AFERead(LED1VAL);     // this reads in the latest LED1 value
-    
-    disableDRDY();          
-
-    // filter the values
-    Redvalue = fir.process(Redvalue);  
-    IRvalue = fir.process(IRvalue);  
-    
-    // add them in to the sum within the loop
-    Redsum += Redvalue;
-    IRsum += IRvalue;
-		
-    // go through each sample and find the max and min in a particular range..
-    if(Redvalue > Redhigh)
-      Redhigh = Redvalue;	
-    if(Redvalue < Redlow)
-      Redlow = Redvalue;	
-    if(IRvalue > IRhigh)
-      IRhigh = IRvalue;	
-    if(IRvalue < IRlow)
-      IRlow = IRvalue;	
-
-    if (i<501) {
-      continue;
-    }
-    
-    // DC values are taken to be the average.. wut
-    Reddc = Redsum/i;
-    IRdc = IRsum/i;
-
-    Redac_sq += pow (((long)(Redvalue - Reddc)), 2.0);
-    IRac_sq += pow (((long)(IRvalue - IRdc)), 2.0);
-  }		
-	
-  /* 
-  // commenting out the 'finger not detected' part during debugging. 
-  // THis will have to be recalibrated specifically to our system.
-  if((Reddc < 0 && IRdc < 0) ||( Reddc>4000 && IRdc>4000)) {
-     Serial.println("Finger not detected.");
-     return 0;
-  }   
-  */
-
-  Redac = sqrt(Redac_sq/(samples-500));
-  IRac = sqrt(IRac_sq/(samples-500));
-
-/*
-  Serial.print("Reddc: "); 
-  Serial.print(Reddc); 
-  Serial.print("\t"); 
-  Serial.print("Redhigh: ");                 
-  Serial.print(Redhigh); 
-  Serial.print("\t");
-  Serial.print("Redlow: ");                 
-  Serial.print(Redlow); 
-  Serial.print("\t");
-  Serial.print("Redac_sq: ");                 
-  Serial.print(Redac_sq); 
-  Serial.print("\t");
-  Serial.print("Redac :"); 
-  Serial.print(Redac); 
-  Serial.print("\t");         
-  Serial.print("IRdc: "); 
-  Serial.print(IRdc); 
-  Serial.print("\t");          
-  Serial.print("IRhigh: ");                 
-  Serial.print(IRhigh); 
-  Serial.print("\t");
-  Serial.print("IRlow: ");                 
-  Serial.print(IRlow); 
-  Serial.print("\t");     
-  Serial.print("IRac_sq :")  ;
-  Serial.print(IRac_sq); 
-  Serial.print("\t");            
-  Serial.print("IRac :"); 
-  Serial.print(IRac); 
-  Serial.print("\t"); 
-  
-  // take the ratio of ratios to find the spo2 value finally..
-  float spo2 = (float)((float)Redac/Reddc)/(float)((float)IRac/IRdc);
-  return spo2;
-  */
+  return String(Redhigh) + "," + String(IRhigh);
 }
